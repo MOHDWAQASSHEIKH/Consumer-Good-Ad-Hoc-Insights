@@ -1,0 +1,207 @@
+1. Provide the list of country where company is having a business.
+
+SELECT DISTINCT market from dim_customer;
+
+
+2. Generate a report of individual product sales from Croma India customer for FY = 2021 so that stakeholder can track individual product sales.
+
+
+SELECT fs.date,fs.product_code, fs.customer_code, p.product, fs.sold_quantity,p.variant, gp.gross_price,
+ROUND(gross_price * sold_quantity,1) AS gross_price_total FROM fact_sales_monthly AS fs
+JOIN dim_product AS p
+ON fs.product_code = p.product_code JOIN fact_gross_price gp
+ON gp.product_code = p.product_code
+WHERE
+customer_code = '90002002'
+AND YEAR (date_add(date, INTERVAL 4 MONTH)) = 2021
+AND gp.fiscal_year = 2021
+ORDER BY date DESC;
+
+3. Generate a report of an aggregate monthly gross sales for Croma India customer to track how much sales this particular customer is generating for AtliQ and manage relationships.
+
+
+SELECT c.customer, c.market, a.date,
+ROUND(SUM((a.sold_quantity*b.gross_price)),2) as gross_price_total
+FROM fact_sales_monthly a
+JOIN fact_gross_price b
+ON a.product_code = b.product_code
+JOIN dim_customer c
+ON c.customer_code = a.customer_code
+WHERE a.customer_code = '90002002' GROUP BY a.date;
+
+
+4. Create a stored procedure that can determine the market badge based on the follow logic. If sod quantity > 50 million consider it 'Gold' else 'Silver'.
+
+INPUT 1. Market 2. Fiscal year
+
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_market_badge`( enter year INT, enter_market TEXT
+)
+BEGIN
+END
+SELECT b.market, SUM(a.sold_quantity) AS total_quantity,
+Case
+WHEN SUM(a.sold_quantity) > 5000000 THEN 'Gold'
+ELSE 'Silver'
+END AS Category
+FROM gdb0041.fact_sales_monthly AS a
+JOIN gdb0041.dim_customer AS b
+ON a.customer_code = b.customer_code
+WHERE YEAR (DATE_ADD(a.date, INTERVAL 4 MONTH)) AND b.market = enter_market
+GROUP BY b.market;
+END
+
+5. Provide the list of top 10 customers in India getting highest pre invoice discount in financial year 2021.
+
+
+SELECT dc.market,dc.customer,
+ROUND(CONCAT( pid.pre_invoice_discount_pct*100,'%'),2)
+AS pre_invoice_deduction_pct
+FROM dim_customer AS dc
+JOIN fact_pre_invoice_deductions AS pid
+USING (customer_code)
+WHERE pid.fiscal_year = 2021
+AND market = "India"
+ORDER BY pid.pre_invoice_discount_pct DESC
+LIMIT 10;
+
+6. Find the net sales for the fiscal_year 2021
+
+*******************GET PRE INVOICE DEDUCTION AND STORING AS VIEW*******************
+CREATE
+ALGORITHM = UNDEFINED
+DEFINER=`root`@`localhost`
+SQL SECURITY DEFINER
+VIEW `gdbee41`.`pre_invoice_view` AS
+SELECT
+FROM
+`a`.`date` AS `date`,
+`a`.`product_code` AS `product_code`, `a`.`customer_code` AS `customer_code`,
+`a`.`sold_quantity` AS `sold_quantity`,
+`c`.`gross_price` AS `gross_price`,
+ROUND((`a`.`sold_quantity`
+2) AS `total_gp`,
+`c`.`gross_price`),
+`pre`.`pre_invoice_discount_pct` AS `pre_invoice_deduction`,
+`c`.`fiscal_year` AS `fiscal_year`
+(((`gdbee41`.`fact_sales_monthly` `a`
+JOIN `gdbee41`.`dim_product` `b` ON ((`a`.`product_code` = `b`.`product_code`))) JOIN `gdbee41`.`fact_gross_price` `c` ON ((`b`.`product_code` = `c`.`product_code`))) JOIN `gdbee41`.`fact_pre_invoice_deductions` `pre` ON ((`pre`.`customer_code`
+WHERE
+((YEAR((`a`.`date` + INTERVAL 4 MONTH)) = 2021)
+AND (`c`.`fiscal_year` = 2021))
+.`customer_code`)))
+
+*******************GET POST INVOICE DEDUCTION AND STORING AS VIEW*******************
+
+
+CREATE
+ALGORITHM=UNDEFINED
+DEFINER=`root`@`localhost'
+SQL SECURITY DEFINER
+VIEW `gdbee41`.`pre_invoice_view` AS
+SELECT
+FROM
+WHERE
+`a`.`date` AS `date`,
+`a`.`product_code` AS `product_code`, `a`.`customer_code` AS `customer_code` `a`.`sold_quantity` AS `sold_quantity`,
+`c`.`gross_price` AS `gross_price`,
+ROUND((`a`.`sold_quantity`
+2) AS `total_gp`,
+`c`.`gross_price`),
+`pre`.`pre_invoice_discount_pct` AS `pre_invoice_deduction`, `c`.`fiscal_year` AS `fiscal year`
+(((`gdbee41`.`fact_sales_monthly` `a`
+JOIN `gdbee41`.`dim_product` `b` ON (`a`.`product_code` = `b`.`product_code`))) JOIN `gdbee41`.`fact_gross_price` `c` ON ((`b`.`product_code` = `c`.`product_code`))) JOIN `gdbee41`.`fact_pre_invoice_deductions` `pre` ON (`pre`.`customer_code`
+((YEAR((`a`.`date` + INTERVAL 4 MONTH)) = 2021)
+AND (`c`.`fiscal_year` = 2021))
+`customer_code`)))
+
+
+*******************GET POST INVOICE DEDUCTION AND STORING AS VIEW*******************
+
+
+CREATE
+ALGORITHM=UNDEFINED
+DEFINER=`root`@`localhost'
+SQL SECURITY DEFINER
+VIEW `gdb0041`.`net_sales_view` AS
+SELECT
+`gdb0041`.`post_invoice_view`.`date` AS `date`,
+`gdb0041`.`post_invoice_view`.`product_code` AS `product_code`,
+`gdb0041`.`post_invoice_view`.`customer_code` AS `customer_code`,
+FROM
+`gdb0041`.`post_invoice_view`.`sold_quantity` AS `sold_quantity`,
+`gdb0041`.`post_invoice_view`.`gross_price` AS `gross_price`,
+`gdb0041`.`post_invoice_view`.`total_gp` AS `total_gp`,
+`gdb0041`.`post_invoice_view`.`pre_invoice_deduction` AS `pre_invoice_deduction`, `gdb0041`.`post_invoice_view`.`net_invoice_sales` AS `net_invoice_sales`,
+`gdb0041`.`post_invoice_view`.`other_deduction` AS `other_deduction`
+ROUND((`gdb0041`.`post_invoice_view`.`net_invoice_sales` - (`gdb0041`.`post_invoice_view`.`net_invoice_sales` `gdb0041`.`post_invoice_view`.`other_deduction`)),
+2) AS `net_sales`
+`gdb0041`.`post_invoice_view`
+
+7. Get total net sales for the months of August_2021.
+
+
+SELECT date, SUM(net_sales) FROM net_sales_view
+WHERE MONTH(date) = 08
+AND YEAR (date) = 2021
+GROUP BY date;
+
+8. Find top customer AND & market by net sales
+
+*******************CUSTOMER*******************
+
+SELECT c.customer, ns.net_sales
+FROM dim_customer c
+JOIN net_sales_view ns
+ON c.customer_code = ns.customer_code
+GROUP BY c.customer
+ORDER BY net_sales DESC
+LIMIT 5;
+
+*******************MARKET*******************
+
+SELECT c.market, ns.net_sales
+FROM dim_customer c
+JOIN net_sales_view ns
+ON c.customer_code = ns.customer_code
+GROUP BY c.market
+ORDER BY net_sales_DESC
+LIMIT 5;
+
+9. Get the Top 3 products in each division that have a high total sold quantity in the fiscal year 2021? The final output contains these fields: division, product code, product, total sold quantity, rank order.
+
+
+with cte as
+(select division, product_code, product, sum(sold_quantity) as total_sold_quantity,
+rank() over (partition by division order by sum(sold_quantity) desc) as rank_order from dim_product p
+join fact_sales_monthly s
+using (product_code)
+where YEAR (DATE_ADD(date, INTERVAL 4 MONTH)) = 2021
+group by product_code, product, division
+order by total_sold_quantity desc)
+select division, product_code, product, total_sold_quantity, rank_order
+from cte
+where rank_order <=3;
+
+10.Get the products that have the highest and lowest manufacturing costs. The final output should contain these fields: product code, product, manufacturing cost.
+
+SELECT dp.product, dp.product_code, fmc.manufacturing_cost FROM dim_product AS dp
+JOIN fact_manufacturing_cost AS fmc
+USING(product_code)
+WHERE fmc.manufacturing_cost = (SELECT MIN(manufacturing_cost) FROM fact_manufacturing_cost)
+OR fmc.manufacturing_cost = (SELECT MAX(manufacturing_cost) FROM fact_manufacturing_cost);
+
+
+11.Find the quarter in 2020 having maximum sold quantity
+
+SELECT 
+       CASE
+	WHEN MONTH(date) IN(9,10,11) THEN "Q1"
+        WHEN MONTH(date) IN(12,1,2) THEN "Q2"
+        WHEN MONTH(date) IN(3,4,5) THEN "Q3
+        WHEN MONTH(date) IN(6,7,8) THEN "Q4"
+       END AS Quarter,
+       ROUND(SUM(sold_quantity)/1000000,2) AS Quaterly_sold_quantity
+       FROM fact_sales_monthly
+       WHERE YEAR(DATE_ADD(date, INTERVAL 4 MONTH)) = 2020
+       GROUP BY Quarter;
