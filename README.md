@@ -2,6 +2,8 @@
 
 AtliQ is a rapidly expanding hardware company selling a diverse range of products across multiple countries through various channels, including retail, direct sales, and distributor networks, both online and offline. To support its expansion and drive data-informed decisions, AtliQ is seeking a dedicated data analytics team.
 
+Linkedin: https://shorturl.at/O6aYW
+
 ## 🛠️ Tools Utilized
 
 - **MySQL Workbench** (for SQL-based insights)
